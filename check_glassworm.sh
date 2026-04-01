@@ -86,15 +86,21 @@ else
 fi
 echo ""
 
-# ── 6. Solana C2 address in source files ──────────────────────────────────────
-info "Checking for known GlassWorm Solana C2 wallet address in source files..."
-SOLANA_ADDR="BjVeAjPrSKFiingBn4vZvghsGj9KCE8AJVtbc9S8o8SC"
-if grep -r --include="*.py" --include="*.js" --include="*.ts" --include="*.json" \
-    "$SOLANA_ADDR" . 2>/dev/null | grep -q .; then
-    flag "Known GlassWorm Solana C2 address found in source files"
-else
-    ok "Solana C2 address not found"
-fi
+# ── 6. Solana C2 addresses in source files ────────────────────────────────────
+info "Checking for known GlassWorm Solana C2 wallet addresses in source files..."
+SOLANA_ADDRS=(
+    "BjVeAjPrSKFiingBn4vZvghsGj9KCE8AJVtbc9S8o8SC"
+    "28PKnu7RzizxBzFPoLp69HLXp9bJL3JFtT2s5QzHsEA2"
+)
+SOLANA_HIT=0
+for SOLANA_ADDR in "${SOLANA_ADDRS[@]}"; do
+    if grep -r --include="*.py" --include="*.js" --include="*.ts" --include="*.json" \
+        "$SOLANA_ADDR" . 2>/dev/null | grep -q .; then
+        flag "Known GlassWorm Solana C2 address found in source files: $SOLANA_ADDR"
+        SOLANA_HIT=1
+    fi
+done
+[ "$SOLANA_HIT" -eq 0 ] && ok "Solana C2 addresses not found"
 echo ""
 
 # ── 7. Base64 blobs appended to Python entry points ──────────────────────────
@@ -147,6 +153,73 @@ else
 fi
 echo ""
 
+# ── 10. Active connections to known GlassWorm C2 IPs ─────────────────────────
+info "Checking for active connections to known GlassWorm C2 servers..."
+C2_IPS=("217.69.3.218" "140.82.52.31")
+C2_HIT=0
+if command -v ss &>/dev/null; then
+    for IP in "${C2_IPS[@]}"; do
+        CONN=$(ss -tnp 2>/dev/null | grep "$IP" || true)
+        if [ -n "$CONN" ]; then
+            flag "Active connection to GlassWorm C2 server $IP:"
+            echo "$CONN" | sed 's/^/    /'
+            C2_HIT=1
+        fi
+    done
+    [ "$C2_HIT" -eq 0 ] && ok "No active connections to known C2 IPs"
+else
+    echo -e "${YEL}[SKIP]${RST}  'ss' not available"
+fi
+echo ""
+
+# ── 11. GlassWorm C2 IPs / URLs in source files ───────────────────────────────
+info "Checking source files for known GlassWorm C2 IPs and payload URLs..."
+C2_PATTERNS=(
+    "217\.69\.3\.218"
+    "140\.82\.52\.31"
+    "get_arhive_npm"
+    "get_zombi_payload"
+    "uhjdclolkdn@gmail\.com"
+)
+C2_SRC_HIT=0
+for PAT in "${C2_PATTERNS[@]}"; do
+    MATCHES=$(grep -r --include="*.py" --include="*.js" --include="*.ts" \
+        --include="*.json" --include="*.sh" -l "$PAT" . 2>/dev/null || true)
+    if [ -n "$MATCHES" ]; then
+        flag "C2 pattern '$PAT' found in:"
+        echo "$MATCHES" | sed 's/^/    /'
+        C2_SRC_HIT=1
+    fi
+done
+[ "$C2_SRC_HIT" -eq 0 ] && ok "No C2 IPs or payload URLs found in source files"
+echo ""
+
+# ── 12. Google Calendar C2 references in source files ────────────────────────
+info "Checking source files for Google Calendar C2 pattern..."
+GCAL_PAT="calendar\.app\.google"
+GCAL_HITS=$(grep -r --include="*.py" --include="*.js" --include="*.ts" \
+    --include="*.json" --include="*.sh" -l "$GCAL_PAT" . 2>/dev/null || true)
+if [ -n "$GCAL_HITS" ]; then
+    flag "Google Calendar C2 reference found in:"
+    echo "$GCAL_HITS" | sed 's/^/    /'
+else
+    ok "No Google Calendar C2 references found"
+fi
+echo ""
+
+# ── 13. Windows Run-key persistence strings in source files ──────────────────
+#info "Checking source files for Windows Run-key persistence strings..."
+#RUNKEY_PAT="CurrentVersion\\\\Run"
+#RUNKEY_HITS=$(grep -r --include="*.py" --include="*.js" --include="*.ts" \
+#    --include="*.json" --include="*.sh" -l "$RUNKEY_PAT" . 2>/dev/null || true)
+#if [ -n "$RUNKEY_HITS" ]; then
+#    flag "Windows Run-key persistence string found in:"
+#    echo "$RUNKEY_HITS" | sed 's/^/    /'
+#else
+#    ok "No Windows Run-key persistence strings found"
+#fi
+#echo ""
+
 # ── Summary ───────────────────────────────────────────────────────────────────
 echo -e "${BLD}========================================${RST}"
 if [ "$HITS" -gt 0 ]; then
@@ -156,8 +229,15 @@ if [ "$HITS" -gt 0 ]; then
     echo "  1. Revoke GitHub, npm, and OpenVSX tokens immediately"
     echo "  2. Rotate any API keys stored in your environment"
     echo "  3. Check ~/.gitconfig and ~/.npmrc for unexpected changes"
-    echo "  4. Report to your security team"
-    echo "  5. See: https://www.truesec.com/hub/blog/glassworm-self-propagating-vscode-extension"
+    echo "  4. Block outbound traffic to 217.69.3.218 and 140.82.52.31"
+    echo "  5. Report to your security team"
+    echo ""
+    echo "  Known C2 infrastructure:"
+    echo "    Primary C2:        217.69.3.218"
+    echo "    Exfil endpoint:    140.82.52.31:80/wall"
+    echo "    Solana wallets:    BjVeAjPrSKFiingBn4vZvghsGj9KCE8AJVtbc9S8o8SC"
+    echo "                       28PKnu7RzizxBzFPoLp69HLXp9bJL3JFtT2s5QzHsEA2"
+    echo "    Calendar C2 org:   uhjdclolkdn@gmail.com"
 else
     echo -e "${GRN}${BLD}  No GlassWorm indicators found${RST}"
     echo ""

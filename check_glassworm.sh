@@ -25,6 +25,10 @@ ok() {
     echo -e "${GRN}[OK]${RST}    $1"
 }
 
+skip() {
+    echo -e "${YEL}[SKIP]${RST}  $1"
+}
+
 echo -e "${BLD}========================================${RST}"
 echo -e "${BLD}   GlassWorm Infection Checker          ${RST}"
 echo -e "${BLD}========================================${RST}"
@@ -106,8 +110,10 @@ echo ""
 
 # ── 7. Base64 blobs appended to Python entry points ──────────────────────────
 info "Checking common Python entry points for appended Base64 payloads..."
+B64_CHECKED=0
 for f in setup.py main.py app.py manage.py __init__.py; do
     if [ -f "$f" ]; then
+        B64_CHECKED=$((B64_CHECKED + 1))
         if grep -qP "[A-Za-z0-9+/]{100,}={0,2}" "$f" 2>/dev/null; then
             flag "Possible Base64 payload appended to $f"
         else
@@ -115,6 +121,7 @@ for f in setup.py main.py app.py manage.py __init__.py; do
         fi
     fi
 done
+[ "$B64_CHECKED" -eq 0 ] && skip "No Python entry point files found in current directory"
 echo ""
 
 # ── 8. Git history anomalies (committer date newer than author date) ───────────
@@ -135,7 +142,7 @@ if git rev-parse --is-inside-work-tree &>/dev/null; then
         ok "No git history anomalies found"
     fi
 else
-    echo -e "${YEL}[SKIP]${RST}  Not inside a git repository"
+    skip "Not inside a git repository"
 fi
 echo ""
 
@@ -150,7 +157,7 @@ if command -v ss &>/dev/null; then
         ok "No suspicious connections on common RAT ports"
     fi
 else
-    echo -e "${YEL}[SKIP]${RST}  'ss' not available"
+    skip "'ss' not available"
 fi
 echo ""
 
@@ -169,7 +176,7 @@ if command -v ss &>/dev/null; then
     done
     [ "$C2_HIT" -eq 0 ] && ok "No active connections to known C2 IPs"
 else
-    echo -e "${YEL}[SKIP]${RST}  'ss' not available"
+    skip "'ss' not available"
 fi
 echo ""
 

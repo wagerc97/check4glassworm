@@ -10,6 +10,7 @@ BLD='\033[1m'
 RST='\033[0m'
 
 HITS=0
+SELF=$(basename "$0")
 
 flag() {
     echo -e "${RED}[FOUND]${RST} $1"
@@ -184,7 +185,7 @@ C2_PATTERNS=(
 C2_SRC_HIT=0
 for PAT in "${C2_PATTERNS[@]}"; do
     MATCHES=$(grep -r --include="*.py" --include="*.js" --include="*.ts" \
-        --include="*.json" --include="*.sh" -l "$PAT" . 2>/dev/null || true)
+        --include="*.json" --include="*.sh" --exclude="$SELF" -l "$PAT" . 2>/dev/null || true)
     if [ -n "$MATCHES" ]; then
         flag "C2 pattern '$PAT' found in:"
         echo "$MATCHES" | sed 's/^/    /'
@@ -198,7 +199,7 @@ echo ""
 info "Checking source files for Google Calendar C2 pattern..."
 GCAL_PAT="calendar\.app\.google"
 GCAL_HITS=$(grep -r --include="*.py" --include="*.js" --include="*.ts" \
-    --include="*.json" --include="*.sh" -l "$GCAL_PAT" . 2>/dev/null || true)
+    --include="*.json" --include="*.sh" --exclude="$SELF" -l "$GCAL_PAT" . 2>/dev/null || true)
 if [ -n "$GCAL_HITS" ]; then
     flag "Google Calendar C2 reference found in:"
     echo "$GCAL_HITS" | sed 's/^/    /'
@@ -211,7 +212,7 @@ echo ""
 #info "Checking source files for Windows Run-key persistence strings..."
 #RUNKEY_PAT="CurrentVersion\\\\Run"
 #RUNKEY_HITS=$(grep -r --include="*.py" --include="*.js" --include="*.ts" \
-#    --include="*.json" --include="*.sh" -l "$RUNKEY_PAT" . 2>/dev/null || true)
+#    --include="*.json" --include="*.sh" --exclude="$SELF" -l "$RUNKEY_PAT" . 2>/dev/null || true)
 #if [ -n "$RUNKEY_HITS" ]; then
 #    flag "Windows Run-key persistence string found in:"
 #    echo "$RUNKEY_HITS" | sed 's/^/    /'
@@ -221,7 +222,7 @@ echo ""
 #echo ""
 
 # ── Summary ───────────────────────────────────────────────────────────────────
-echo -e "${BLD}========================================${RST}"
+echo -e "${BLD}========================================================${RST}"
 if [ "$HITS" -gt 0 ]; then
     echo -e "${RED}${BLD}  $HITS indicator(s) found — investigate immediately${RST}"
     echo ""
@@ -244,4 +245,4 @@ else
     echo "  Stay cautious: audit your VS Code extensions and"
     echo "  review any recently cloned Python repos manually."
 fi
-echo -e "${BLD}========================================${RST}"
+echo -e "${BLD}========================================================${RST}"
